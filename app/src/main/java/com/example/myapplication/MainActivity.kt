@@ -1,4 +1,4 @@
-package com.example.my1application
+package com.example.myapplication
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -13,55 +13,57 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-// Проблемный импорт - закомментирован
-// import com.example.my1application.ui.theme.My1ApplicationTheme
+import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Временное решение - используем встроенную тему вместо My1ApplicationTheme
-            // My1ApplicationTheme {
             Surface(color = MaterialTheme.colorScheme.background) {
-                AnimeApp()
+                AlbumApp()
             }
-            // }
         }
     }
 }
 
-data class Anime(
+data class Album(
     val id: Int,
     val title: String,
+    val singer: String,
     val year: Int,
     val genre: String,
-    val episodes: Int,
 )
 
-val sampleAnimeList = listOf(
-    Anime(1, "shaman king", 2000, "mech", 450),
-    Anime(2, "code geass", 1999, "fantasy", 200),
+
+val sampleAlbumList = listOf(
+    Album(1, "Thank You, Next", "Ariana Grande", 2019, "Pop"),
+    Album(2, "BRAT", "Charli XCX", 2024, "Pop"),
+    Album(3, "Pop 2", "Charli XCX", 2017, "Pop"),
+    Album(4, "how i'm feeling now", "Charli XCX", 2020, "Pop"),
+    Album(5, "¥€$", "Tommy Cash", 2018, "Rap, Hip-Hop"),
+    Album(6, "Enema Of The State", "Blink-182", 1999, "Pop Rock"),
 )
 
 @Composable
-fun AnimeApp() {
+fun AlbumApp() {
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val filteredList = remember(searchQuery) {
         if (searchQuery.isBlank()) {
-            sampleAnimeList
+            sampleAlbumList
         } else {
-            sampleAnimeList.filter { anime ->
-                anime.title.contains(searchQuery, ignoreCase = true)
+            sampleAlbumList.filter { album ->
+                album.title.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
-    AnimeListScreen(
-        animeList = filteredList,
+    AlbumListScreen(
+        albumList = filteredList,
         searchQuery = searchQuery,
         onSearchQueryChange = { newQuery -> searchQuery = newQuery }
     )
@@ -69,22 +71,21 @@ fun AnimeApp() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnimeListScreen(
-    animeList: List<Anime>,
+fun AlbumListScreen(
+    albumList: List<Album>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Anime Viewer") })
+            TopAppBar(title = { Text("Album Viewer") })
         }
     ) { innerPadding ->
-        // Используем innerPadding здесь
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp) // Добавляем дополнительный отступ
+                .padding(16.dp)
         ) {
             OutlinedTextField(
                 value = searchQuery,
@@ -96,19 +97,19 @@ fun AnimeListScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (animeList.isEmpty()) {
+            if (albumList.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No anime found")
+                    Text("No album found")
                 }
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(animeList) { anime ->
-                        AnimeCard(anime = anime)
+                    items(albumList) { album ->
+                        AlbumCard(album = album)
                     }
                 }
             }
@@ -117,7 +118,7 @@ fun AnimeListScreen(
 }
 
 @Composable
-fun AnimeCard(anime: Anime) {
+fun AlbumCard(album: Album) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,17 +133,22 @@ fun AnimeCard(anime: Anime) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = anime.title,
+                    text = album.title,
                     fontWeight = FontWeight.Bold,
-                    fontSize = MaterialTheme.typography.titleMedium.fontSize
+                    fontSize = 20.sp
                 )
                 Text(
-                    text = "${anime.year} - ${anime.genre}",
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                    text = album.singer,
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 16.sp
                 )
                 Text(
-                    text = "Episodes: ${anime.episodes}",
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                    text = "Year: ${album.year}",
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Genre: ${album.genre}",
+                    fontSize = 16.sp
                 )
             }
         }
@@ -153,6 +159,6 @@ fun AnimeCard(anime: Anime) {
 @Composable
 fun DefaultPreview() {
     Surface(color = MaterialTheme.colorScheme.background) {
-        AnimeApp()
+        AlbumApp()
     }
 }
