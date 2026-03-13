@@ -19,7 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.remember
-
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.FilterChipDefaults
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,14 +47,17 @@ data class AlbumStatus(
     val willListen: Boolean = false
 )
 
-
 val sampleAlbumList = listOf(
     Album(1, "Thank You, Next", "Ariana Grande", 2019, "Pop"),
     Album(2, "BRAT", "Charli XCX", 2024, "Pop"),
     Album(3, "Pop 2", "Charli XCX", 2017, "Pop"),
-    Album(4, "how i'm feeling now", "Charli XCX", 2020, "Pop"),
-    Album(5, "¥€$", "Tommy Cash", 2018, "Rap, Hip-Hop"),
-    Album(6, "Enema Of The State", "Blink-182", 1999, "Pop Rock"),
+    Album(4, "Kid A", "Radiohead", 2000, "Electronica, Ambient"),
+    Album(5, "Swimming", "Mac Miller", 2018, "Rap"),
+    Album(6, "Meds", "Placebo", 2006, "Alternative Rock"),
+    Album(7, "In Rainbows", "Radiohead", 2007, "Alternative Rock"),
+    Album(8, "how i'm feeling now", "Charli XCX", 2020, "Pop"),
+    Album(9, "¥€$", "Tommy Cash", 2018, "Rap, Hip-Hop"),
+    Album(10, "Enema Of The State", "Blink-182", 1999, "Pop Rock"),
 )
 
 enum class AlbumFilter {
@@ -112,7 +116,6 @@ fun AlbumApp() {
     )
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumListScreen(
@@ -129,37 +132,55 @@ fun AlbumListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 4.dp)
         ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
                 label = { Text("Search by title or artist") },
                 singleLine = true,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    8.dp,
+                    Alignment.CenterHorizontally
+                )
             ) {
                 FilterChip(
                     selected = currentFilter == AlbumFilter.ALL,
                     onClick = { onFilterChange(AlbumFilter.ALL) },
-                    label = { Text("All") }
+                    label = { Text("All") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF484D6D),
+                        selectedLabelColor = Color.White
+                    )
                 )
 
                 FilterChip(
                     selected = currentFilter == AlbumFilter.FAVORITES,
                     onClick = { onFilterChange(AlbumFilter.FAVORITES) },
-                    label = { Text("Favorites") }
+                    label = { Text("Favorites") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF484D6D),
+                        selectedLabelColor = Color.White
+                    )
                 )
 
                 FilterChip(
                     selected = currentFilter == AlbumFilter.WILL_LISTEN,
                     onClick = { onFilterChange(AlbumFilter.WILL_LISTEN) },
-                    label = { Text("Listen Later") }
+                    label = { Text("Listen Later") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF484D6D),
+                        selectedLabelColor = Color.White
+                    )
                 )
 
 //                FilterChip(
@@ -206,12 +227,20 @@ fun AlbumCard(album: Album,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFDFDFE5)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = 12.dp
+                ),
         ) {
             Text(text = album.title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Text(text = album.singer, fontStyle = FontStyle.Italic, fontSize = 16.sp)
@@ -220,16 +249,32 @@ fun AlbumCard(album: Album,
 
             Spacer(Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    8.dp,
+                    Alignment.CenterHorizontally
+                )
+            ) {
                 Button(onClick = {
                     onStatusChange(status.copy(isFavorite = !status.isFavorite))
-                }) {
+                },
+                    modifier = Modifier.height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD72638)
+                    )
+                ) {
                     Text(if (status.isFavorite) "Favorite" else "Like")
                 }
 
                 Button(onClick = {
                     onStatusChange(status.copy(willListen = !status.willListen))
-                }) {
+                },
+                    modifier = Modifier.height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF484D6D)
+                    )
+                )  {
                     Text(if (status.willListen) "In Playlist" else "Add to Playlist")
                 }
             }
