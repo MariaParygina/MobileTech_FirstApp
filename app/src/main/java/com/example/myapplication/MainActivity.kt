@@ -12,11 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.HistoricalChange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.remember
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +56,19 @@ val sampleAlbumList = listOf(
     Album(6, "Enema Of The State", "Blink-182", 1999, "Pop Rock"),
 )
 
+enum class AlbumFilter {
+    ALL,
+    FAVORITES,
+    WILL_LISTEN
+}
+
 @Composable
 fun AlbumApp() {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    var currentFilter by rememberSaveable {
+        mutableStateOf(AlbumFilter.ALL)
+    }
 
     var albumStatuses by rememberSaveable {
         mutableStateOf(
@@ -64,8 +76,8 @@ fun AlbumApp() {
         )
     }
 
-    val filteredList = remember(searchQuery) {
-        val list = if (searchQuery.isBlank()) {
+    val filteredList = remember(searchQuery, albumStatuses, currentFilter) {
+        val searched = if (searchQuery.isBlank()) {
             sampleAlbumList
         } else {
             sampleAlbumList.filter { album ->
@@ -74,16 +86,16 @@ fun AlbumApp() {
             }
         }
 
-        list.sortedByDescending {
-            val status= albumStatuses[it.id] ?: AlbumStatus()
-            when {
-                status.isFavorite -> 3
-                status.willListen -> 2
-                status.isListened -> 1
-                else -> 0
+        searched.filter { album ->
+            val status = albumStatuses[album.id] ?: AlbumStatus()
+            when (currentFilter) {
+                AlbumFilter.ALL -> true
+                AlbumFilter.FAVORITES -> status.isFavorite
+                AlbumFilter.WILL_LISTEN -> status.willListen
             }
         }
     }
+
 
     AlbumListScreen(
         albumList = filteredList,
@@ -94,7 +106,9 @@ fun AlbumApp() {
             }
         },
         searchQuery = searchQuery,
-        onSearchQueryChange = { newQuery -> searchQuery = newQuery }
+        onSearchQueryChange = { searchQuery = it },
+        currentFilter = currentFilter,
+        onFilterChange = { currentFilter = it }
     )
 }
 
@@ -106,9 +120,11 @@ fun AlbumListScreen(
     albumStatuses: Map<Int, AlbumStatus>,
     onStatusChange: (Int, AlbumStatus) -> Unit,
     searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
+    onSearchQueryChange: (String) -> Unit,
+    currentFilter: AlbumFilter,
+    onFilterChange: (AlbumFilter) -> Unit
 ) {
-    Scaffold(topBar = {TopAppBar(title = { Text("Album Viewer") }) }) { innerPadding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Album Viewer") }) }) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -124,6 +140,35 @@ fun AlbumListScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = currentFilter == AlbumFilter.ALL,
+                    onClick = { onFilterChange(AlbumFilter.ALL) },
+                    label = { Text("All") }
+                )
+
+                FilterChip(
+                    selected = currentFilter == AlbumFilter.FAVORITES,
+                    onClick = { onFilterChange(AlbumFilter.FAVORITES) },
+                    label = { Text("Favorites") }
+                )
+
+                FilterChip(
+                    selected = currentFilter == AlbumFilter.WILL_LISTEN,
+                    onClick = { onFilterChange(AlbumFilter.WILL_LISTEN) },
+                    label = { Text("Listen Later") }
+                )
+
+//                FilterChip(
+//                    selected = currentFilter == AlbumFilter.LISTENED,
+//                    onClick = { onFilterChange(AlbumFilter.LISTENED) },
+//                    label = { Text("Listened") }
+//                )
+            }
+
 
             if (albumList.isEmpty()) {
                 Box(
@@ -186,12 +231,6 @@ fun AlbumCard(album: Album,
                     onStatusChange(status.copy(willListen = !status.willListen))
                 }) {
                     Text(if (status.willListen) "In Playlist" else "Add to Playlist")
-                }
-
-                Button(onClick = {
-                    onStatusChange(status.copy(isListened = !status.isListened))
-                }) {
-                    Text(if (status.isListened) "Listened" else "Mark Listened")
                 }
             }
         }
