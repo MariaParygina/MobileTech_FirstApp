@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.FilterChipDefaults
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,8 +44,7 @@ data class Album(
 
 data class AlbumStatus(
     val isFavorite: Boolean = false,
-    val isListened: Boolean = false,
-    val willListen: Boolean = false
+    val listenState: ListenState = ListenState.NONE
 )
 
 val sampleAlbumList = listOf(
@@ -63,7 +63,15 @@ val sampleAlbumList = listOf(
 enum class AlbumFilter {
     ALL,
     FAVORITES,
-    WILL_LISTEN
+    WILL_LISTEN,
+    LISTENED
+}
+
+enum class ListenState {
+    NONE,
+    IN_PLAYLIST,
+    LISTENING,
+    LISTENED
 }
 
 @Composable
@@ -95,7 +103,10 @@ fun AlbumApp() {
             when (currentFilter) {
                 AlbumFilter.ALL -> true
                 AlbumFilter.FAVORITES -> status.isFavorite
-                AlbumFilter.WILL_LISTEN -> status.willListen
+                AlbumFilter.WILL_LISTEN ->
+                    status.listenState == ListenState.IN_PLAYLIST ||
+                    status.listenState == ListenState.LISTENING
+                AlbumFilter.LISTENED -> status.listenState == ListenState.LISTENED
             }
         }
     }
@@ -176,18 +187,22 @@ fun AlbumListScreen(
                 FilterChip(
                     selected = currentFilter == AlbumFilter.WILL_LISTEN,
                     onClick = { onFilterChange(AlbumFilter.WILL_LISTEN) },
-                    label = { Text("Listen Later") },
+                    label = { Text("Playlist") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF484D6D),
                         selectedLabelColor = Color.White
                     )
                 )
 
-//                FilterChip(
-//                    selected = currentFilter == AlbumFilter.LISTENED,
-//                    onClick = { onFilterChange(AlbumFilter.LISTENED) },
-//                    label = { Text("Listened") }
-//                )
+                FilterChip(
+                    selected = currentFilter == AlbumFilter.LISTENED,
+                    onClick = { onFilterChange(AlbumFilter.LISTENED) },
+                    label = { Text("Listened") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF484D6D),
+                        selectedLabelColor = Color.White
+                    )
+                )
             }
 
 
@@ -256,6 +271,7 @@ fun AlbumCard(album: Album,
                     Alignment.CenterHorizontally
                 )
             ) {
+
                 Button(onClick = {
                     onStatusChange(status.copy(isFavorite = !status.isFavorite))
                 },
@@ -267,15 +283,31 @@ fun AlbumCard(album: Album,
                     Text(if (status.isFavorite) "Favorite" else "Like")
                 }
 
-                Button(onClick = {
-                    onStatusChange(status.copy(willListen = !status.willListen))
-                },
+                Button(
+                    onClick = {
+
+                        val  newState = when (status.listenState) {
+                            ListenState.NONE -> ListenState.IN_PLAYLIST
+                            ListenState.IN_PLAYLIST -> ListenState.LISTENING
+                            ListenState.LISTENING -> ListenState.LISTENED
+                            ListenState.LISTENED -> ListenState.LISTENED
+                        }
+
+                        onStatusChange(status.copy(listenState = newState))
+                    },
                     modifier = Modifier.height(36.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF484D6D)
                     )
-                )  {
-                    Text(if (status.willListen) "In Playlist" else "Add to Playlist")
+                ) {
+                    val text = when (status.listenState) {
+                        ListenState.NONE -> "Add to playlist"
+                        ListenState.IN_PLAYLIST -> "Listen to"
+                        ListenState.LISTENING -> "Listening..."
+                        ListenState.LISTENED -> "Listened"
+                    }
+
+                    Text(text)
                 }
             }
         }
@@ -289,3 +321,10 @@ fun DefaultPreview() {
         AlbumApp()
     }
 }
+
+
+
+//modifier = Modifier.height(36.dp),
+//colors = ButtonDefaults.buttonColors(
+//containerColor = Color(0xFFD72638)
+//)
