@@ -1,4 +1,4 @@
-package com.example.my1application
+package com.example.myapplication
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-// Проблемный импорт - закомментирован
 // import com.example.my1application.ui.theme.My1ApplicationTheme
 
 class MainActivity : ComponentActivity() {
