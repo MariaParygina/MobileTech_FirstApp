@@ -9,16 +9,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.HistoricalChange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.FilterChipDefaults
 
@@ -63,7 +60,8 @@ val sampleAlbumList = listOf(
 enum class AlbumFilter {
     ALL,
     FAVORITES,
-    WILL_LISTEN,
+    IN_PLAYLIST,
+    LISTENING,
     LISTENED
 }
 
@@ -74,56 +72,65 @@ enum class ListenState {
     LISTENED
 }
 
+class AlbumStateHolder {
+    var searchQuery by mutableStateOf("")
+    var currentFilter by mutableStateOf(AlbumFilter.ALL)
+    var albumStatuses by mutableStateOf(
+        sampleAlbumList.associate { it.id to AlbumStatus() }
+    )
+
+    val filteredList: List<Album>
+        get() {
+            val searched = if (searchQuery.isBlank()) {
+                sampleAlbumList
+            } else {
+                sampleAlbumList.filter { album ->
+                    album.title.contains(searchQuery, ignoreCase = true) ||
+                            album.singer.contains(searchQuery, ignoreCase = true)
+                }
+            }
+
+            return searched.filter { album ->
+                val status = albumStatuses[album.id] ?: AlbumStatus()
+                when (currentFilter) {
+                    AlbumFilter.ALL -> true
+                    AlbumFilter.FAVORITES -> status.isFavorite
+                    AlbumFilter.IN_PLAYLIST -> status.listenState == ListenState.IN_PLAYLIST
+                    AlbumFilter.LISTENING -> status.listenState == ListenState.LISTENING
+                    AlbumFilter.LISTENED -> status.listenState == ListenState.LISTENED
+                }
+            }
+        }
+
+    fun updateSearchQuery(query: String) {
+        searchQuery = query
+    }
+
+    fun updateFilter(filter: AlbumFilter) {
+        currentFilter = filter
+    }
+
+    fun updateAlbumStatus(albumId: Int, newStatus: AlbumStatus) {
+        albumStatuses = albumStatuses.toMutableMap().apply {
+            put(albumId, newStatus)
+        }
+    }
+}
+
 @Composable
 fun AlbumApp() {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-
-    var currentFilter by rememberSaveable {
-        mutableStateOf(AlbumFilter.ALL)
-    }
-
-    var albumStatuses by rememberSaveable {
-        mutableStateOf(
-            sampleAlbumList.associate { it.id to AlbumStatus() }
-        )
-    }
-
-    val filteredList = remember(searchQuery, albumStatuses, currentFilter) {
-        val searched = if (searchQuery.isBlank()) {
-            sampleAlbumList
-        } else {
-            sampleAlbumList.filter { album ->
-                album.title.contains(searchQuery, ignoreCase = true)  ||
-                album.singer.contains(searchQuery, ignoreCase = true)
-            }
-        }
-
-        searched.filter { album ->
-            val status = albumStatuses[album.id] ?: AlbumStatus()
-            when (currentFilter) {
-                AlbumFilter.ALL -> true
-                AlbumFilter.FAVORITES -> status.isFavorite
-                AlbumFilter.WILL_LISTEN ->
-                    status.listenState == ListenState.IN_PLAYLIST ||
-                    status.listenState == ListenState.LISTENING
-                AlbumFilter.LISTENED -> status.listenState == ListenState.LISTENED
-            }
-        }
-    }
-
+    val stateHolder = remember { AlbumStateHolder() }
 
     AlbumListScreen(
-        albumList = filteredList,
-        albumStatuses = albumStatuses,
+        albumList = stateHolder.filteredList,
+        albumStatuses = stateHolder.albumStatuses,
         onStatusChange = { albumId, newStatus ->
-            albumStatuses = albumStatuses.toMutableMap().apply {
-                put(albumId, newStatus)
-            }
+            stateHolder.updateAlbumStatus(albumId, newStatus)
         },
-        searchQuery = searchQuery,
-        onSearchQueryChange = { searchQuery = it },
-        currentFilter = currentFilter,
-        onFilterChange = { currentFilter = it }
+        searchQuery = stateHolder.searchQuery,
+        onSearchQueryChange = { stateHolder.updateSearchQuery(it) },
+        currentFilter = stateHolder.currentFilter,
+        onFilterChange = { stateHolder.updateFilter(it) }
     )
 }
 
@@ -157,10 +164,36 @@ fun AlbumListScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFE8E8F0)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    val favorites = albumStatuses.count { it.value.isFavorite }
+                    val inPlaylist = albumStatuses.count { it.value.listenState == ListenState.IN_PLAYLIST }
+                    val listening = albumStatuses.count { it.value.listenState == ListenState.LISTENING }
+                    val listened = albumStatuses.count { it.value.listenState == ListenState.LISTENED }
+
+                    Text("Liked $favorites", fontSize = 14.sp)
+                    Text("Saved $inPlaylist", fontSize = 14.sp)
+                    Text("In process $listening", fontSize = 14.sp)
+                    Text("Done $listened", fontSize = 14.sp)
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(
-                    8.dp,
+                    3.dp,
                     Alignment.CenterHorizontally
                 )
             ) {
@@ -185,9 +218,19 @@ fun AlbumListScreen(
                 )
 
                 FilterChip(
-                    selected = currentFilter == AlbumFilter.WILL_LISTEN,
-                    onClick = { onFilterChange(AlbumFilter.WILL_LISTEN) },
-                    label = { Text("Playlist") },
+                    selected = currentFilter == AlbumFilter.IN_PLAYLIST,
+                    onClick = { onFilterChange(AlbumFilter.IN_PLAYLIST) },
+                    label = { Text("In Playlist") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF484D6D),
+                        selectedLabelColor = Color.White
+                    )
+                )
+
+                FilterChip(
+                    selected = currentFilter == AlbumFilter.LISTENING,
+                    onClick = { onFilterChange(AlbumFilter.LISTENING) },
+                    label = { Text("Listening") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF484D6D),
                         selectedLabelColor = Color.White
@@ -197,14 +240,13 @@ fun AlbumListScreen(
                 FilterChip(
                     selected = currentFilter == AlbumFilter.LISTENED,
                     onClick = { onFilterChange(AlbumFilter.LISTENED) },
-                    label = { Text("Listened") },
+                    label = { Text("Done") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFF484D6D),
                         selectedLabelColor = Color.White
                     )
                 )
             }
-
 
             if (albumList.isEmpty()) {
                 Box(
@@ -232,11 +274,11 @@ fun AlbumListScreen(
     }
 }
 
-
 @Composable
-fun AlbumCard(album: Album,
-              status: AlbumStatus,
-              onStatusChange: (AlbumStatus) -> Unit
+fun AlbumCard(
+    album: Album,
+    status: AlbumStatus,
+    onStatusChange: (AlbumStatus) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -262,6 +304,15 @@ fun AlbumCard(album: Album,
             Text(text = "Year: ${album.year}", fontSize = 16.sp)
             Text(text = "Genre: ${album.genre}", fontSize = 16.sp)
 
+            Spacer(modifier = Modifier.height(4.dp))
+            val statusText = when (status.listenState) {
+                ListenState.NONE -> "Status: Not in playlist"
+                ListenState.IN_PLAYLIST -> "Status: In playlist"
+                ListenState.LISTENING -> "Status: Listening"
+                ListenState.LISTENED -> "Status: Listened"
+            }
+            Text(text = statusText, fontSize = 12.sp, color = Color.Gray)
+
             Spacer(Modifier.height(8.dp))
 
             Row(
@@ -271,10 +322,10 @@ fun AlbumCard(album: Album,
                     Alignment.CenterHorizontally
                 )
             ) {
-
-                Button(onClick = {
-                    onStatusChange(status.copy(isFavorite = !status.isFavorite))
-                },
+                Button(
+                    onClick = {
+                        onStatusChange(status.copy(isFavorite = !status.isFavorite))
+                    },
                     modifier = Modifier.height(36.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFD72638)
@@ -285,14 +336,12 @@ fun AlbumCard(album: Album,
 
                 Button(
                     onClick = {
-
-                        val  newState = when (status.listenState) {
+                        val newState = when (status.listenState) {
                             ListenState.NONE -> ListenState.IN_PLAYLIST
                             ListenState.IN_PLAYLIST -> ListenState.LISTENING
                             ListenState.LISTENING -> ListenState.LISTENED
-                            ListenState.LISTENED -> ListenState.LISTENED
+                            ListenState.LISTENED -> ListenState.NONE
                         }
-
                         onStatusChange(status.copy(listenState = newState))
                     },
                     modifier = Modifier.height(36.dp),
@@ -302,11 +351,10 @@ fun AlbumCard(album: Album,
                 ) {
                     val text = when (status.listenState) {
                         ListenState.NONE -> "Add to playlist"
-                        ListenState.IN_PLAYLIST -> "Listen to"
-                        ListenState.LISTENING -> "Listening..."
-                        ListenState.LISTENED -> "Listened"
+                        ListenState.IN_PLAYLIST -> "Start listening"
+                        ListenState.LISTENING -> "Make Listened"
+                        ListenState.LISTENED -> "Start again"
                     }
-
                     Text(text)
                 }
             }
@@ -321,10 +369,3 @@ fun DefaultPreview() {
         AlbumApp()
     }
 }
-
-
-
-//modifier = Modifier.height(36.dp),
-//colors = ButtonDefaults.buttonColors(
-//containerColor = Color(0xFFD72638)
-//)
